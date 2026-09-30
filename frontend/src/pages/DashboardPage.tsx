@@ -10,9 +10,9 @@ import { useAuth } from '../hooks/useAuth';
 import {
   createGeneration,
   deleteGeneration,
-  Generation,
   getGeneration,
   listGenerations,
+  type Generation,
 } from '../services/api';
 
 const STYLES = [

@@ -5,7 +5,7 @@
  * Step 2: User enters 6-digit code → Verify
  */
 
-import { FormEvent, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 

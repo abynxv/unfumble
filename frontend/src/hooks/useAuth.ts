@@ -20,7 +20,7 @@
  * If the email exists, it just sends a new OTP. Simple.
  */
 
-import { Session, User } from '@supabase/supabase-js';
+import type { Session, User } from '@supabase/supabase-js';
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 

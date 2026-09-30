@@ -7,12 +7,12 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import {
-  AdminStats,
   adminDeleteGeneration,
   adminListGenerations,
   checkHFHealth,
-  Generation,
   getAdminStats,
+  type AdminStats,
+  type Generation,
 } from '../services/api';
 
 const IconTrash = () => (
