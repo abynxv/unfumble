@@ -22,7 +22,6 @@ const STYLES = [
   { id: 'formal',    label: 'Formal',    desc: 'Elegant, composed portrait' },
 ] as const;
 
-/* ── icons (inline SVG helpers) ─────────────────────────────────── */
 const IconUpload = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
     <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" />
@@ -149,11 +148,10 @@ export default function DashboardPage() {
   return (
     <div className="dashboard-page">
 
-      {/* ── Header ─────────────────────────────────────────────── */}
       <header className="dashboard-header">
         <div className="header-brand">
           <div className="brand-mark" />
-          AI Profile Studio
+          unfumble
         </div>
         <div className="header-actions">
           <span className="header-user">{user?.email}</span>
@@ -163,13 +161,10 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      {/* ── Body ───────────────────────────────────────────────── */}
       <div className="dashboard-body">
 
-        {/* ── Left Panel ─────────────────────────────────────── */}
         <aside className="panel-left">
 
-          {/* Upload */}
           <div>
             <p className="panel-section-title" style={{ marginBottom: 10 }}>Photo</p>
             <input
@@ -202,7 +197,6 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Error */}
           {error && (
             <div className="alert alert-error" role="alert">
               <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" style={{ flexShrink: 0, marginTop: 1 }}>
@@ -212,7 +206,6 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* Style */}
           <div>
             <p className="panel-section-title" style={{ marginBottom: 10 }}>Style</p>
             <div className="style-list">
@@ -238,7 +231,6 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Generate */}
           <button
             onClick={handleGenerate}
             className="btn-generate"
@@ -251,14 +243,12 @@ export default function DashboardPage() {
           </button>
         </aside>
 
-        {/* ── Right Panel ────────────────────────────────────── */}
         <div className="panel-right">
 
-          {/* Current result */}
           {currentGen && (
             <section className="result-section">
               <div className="section-heading" style={{ marginBottom: 16 }}>
-                <span className="section-title">Result</span>
+                <span className="dash-section-title">Result</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span className="section-sub" style={{ textTransform: 'capitalize' }}>{currentGen.style}</span>
                   <span className={badgeClass(currentGen.status)}>{currentGen.status}</span>
@@ -266,7 +256,6 @@ export default function DashboardPage() {
               </div>
 
               <div className="result-pane">
-                {/* Original */}
                 <div className="result-card">
                   <span className="result-card-label">Original</span>
                   {currentGen.original_image_url
@@ -275,7 +264,6 @@ export default function DashboardPage() {
                   }
                 </div>
 
-                {/* Generated */}
                 <div className="result-card">
                   <span className="result-card-label">Generated</span>
                   {currentGen.status === 'completed' && currentGen.generated_image_url ? (
@@ -303,7 +291,7 @@ export default function DashboardPage() {
                       <p className="result-processing-text">
                         {currentGen.status === 'pending' ? 'Queued…' : 'Processing with AI…'}
                       </p>
-                      <p style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>This may take 30–60 s</p>
+                      <p style={{ fontSize: 11, color: 'var(--text-4)' }}>This may take 30–60 s</p>
                     </div>
                   )}
                 </div>
@@ -311,10 +299,9 @@ export default function DashboardPage() {
             </section>
           )}
 
-          {/* History */}
           <section className="history-section">
             <div className="section-heading">
-              <span className="section-title">History</span>
+              <span className="dash-section-title">History</span>
               {!loadingHistory && (
                 <span className="section-sub">{generations.length} generation{generations.length !== 1 ? 's' : ''}</span>
               )}
