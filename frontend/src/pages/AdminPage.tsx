@@ -100,7 +100,7 @@ export default function AdminPage() {
       <header className="admin-header">
         <div className="header-brand">
           <div className="brand-mark" />
-          AI Profile Studio
+          Unfumble
           <span className="badge badge-admin">Admin</span>
         </div>
         <div className="header-actions">
