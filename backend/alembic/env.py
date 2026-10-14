@@ -27,6 +27,7 @@ from app.core.config import get_settings
 # If you add a new model file, import it here too.
 from app.core.database import Base
 from app.models.generation import Generation  # noqa: F401 — needed for Alembic detection
+from app.models.otp import OTPRequest  # noqa: F401
 
 # Alembic Config object — provides access to alembic.ini values
 config = context.config

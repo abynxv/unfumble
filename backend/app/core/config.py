@@ -45,6 +45,14 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     max_upload_size_mb: int = 10
 
+    # ─── SMTP (OTP Fallback) ──────────────────────────────────
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from_email: str = "noreply@unfumble.com"
+    use_smtp_otp: bool = False
+
     # Tell Pydantic to read from a .env file in the backend/ directory
     model_config = SettingsConfigDict(
         env_file=".env",
