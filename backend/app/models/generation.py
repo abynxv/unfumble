@@ -70,7 +70,11 @@ class Generation(Base):
 
     # Generation lifecycle status — starts as PENDING.
     status: Mapped[GenerationStatus] = mapped_column(
-        Enum(GenerationStatus),
+        Enum(
+            GenerationStatus,
+            name="generationstatus",
+            values_callable=lambda obj: [e.value for e in obj],
+        ),
         nullable=False,
         default=GenerationStatus.PENDING,
         server_default="pending",
