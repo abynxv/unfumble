@@ -20,15 +20,24 @@ from sqlalchemy.orm import DeclarativeBase
 
 from app.core.config import get_settings
 
+from uuid import uuid4
+
 settings = get_settings()
 
 # Create the async database engine.
 # pool_pre_ping=True checks connections before using them, which avoids
 # errors from stale/dropped connections in the pool.
+# connect_args disable asyncpg prepared statement caching and assign unique statement names,
+# which is required when connecting via Supabase's transaction pooler (PgBouncer/Supavisor).
 engine = create_async_engine(
     settings.database_url,
     echo=settings.app_env == "development",  # Log SQL in development
     pool_pre_ping=True,
+    connect_args={
+        "statement_cache_size": 0,
+        "prepared_statement_cache_size": 0,
+        "prepared_statement_name_func": lambda: f"__asyncpg_{uuid4()}__",
+    },
 )
 
 # Session factory — creates new AsyncSession instances.
