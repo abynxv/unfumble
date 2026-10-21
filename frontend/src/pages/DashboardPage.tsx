@@ -2,23 +2,69 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import {
+  checkFaceQuality,
   createGeneration,
   deleteGeneration,
   getGeneration,
   listGenerations,
+  type FaceCheckResult,
   type Generation,
 } from '../services/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Upload, Download, Trash2, AlertCircle, ImageIcon } from 'lucide-react';
+import {
+  Loader2,
+  Upload,
+  Download,
+  Trash2,
+  AlertCircle,
+  ImageIcon,
+  CheckCircle2,
+  Sparkles,
+  Circle,
+  Square,
+  ShieldCheck,
+} from 'lucide-react';
 
 const STYLES = [
-  { id: 'corporate', label: 'Corporate', desc: 'Clean studio, neutral background' },
-  { id: 'startup', label: 'Startup', desc: 'Warm, approachable, modern' },
-  { id: 'developer', label: 'Developer', desc: 'Smart casual, friendly' },
-  { id: 'formal', label: 'Formal', desc: 'Elegant, composed portrait' },
+  {
+    id: 'studio_minimal',
+    label: 'Studio Off-White',
+    desc: 'Clean warm off-white studio wall with natural soft key lighting (like sample)',
+    gradient: 'from-[#fbfaf9] via-[#f5f3ef] to-[#ebe7e1]',
+    borderColor: 'border-[#e4ded5]',
+    tag: 'Recommended',
+  },
+  {
+    id: 'studio_grey',
+    label: 'Executive Slate Grey',
+    desc: 'Classic textured slate backdrop with gentle studio vignette',
+    gradient: 'from-[#c2c7cf] via-[#9fa5ae] to-[#797f88]',
+    borderColor: 'border-[#949aa3]',
+  },
+  {
+    id: 'office_blur',
+    label: 'Modern Glass Office',
+    desc: 'Contemporary architectural interior with creamy depth-of-field bokeh',
+    gradient: 'from-[#eef5fc] via-[#d6e3f0] to-[#b7c9dc]',
+    borderColor: 'border-[#bdd0e4]',
+  },
+  {
+    id: 'warm_lounge',
+    label: 'Warm Executive Interior',
+    desc: 'Warm ambient lighting & upscale wood tones for an approachable executive look',
+    gradient: 'from-[#f7efe6] via-[#e8dacf] to-[#cfbcab]',
+    borderColor: 'border-[#cbbab0]',
+  },
+  {
+    id: 'outdoor_bokeh',
+    label: 'Natural Daylight Bokeh',
+    desc: 'Soft outdoor greenery and crisp morning sunlight',
+    gradient: 'from-[#f2f8f4] via-[#d9ebe0] to-[#b8d6c3]',
+    borderColor: 'border-[#b5d3c0]',
+  },
 ] as const;
 
 export default function DashboardPage() {
@@ -27,9 +73,16 @@ export default function DashboardPage() {
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [selectedStyle, setSelectedStyle] = useState('corporate');
+  const [selectedStyle, setSelectedStyle] = useState('studio_minimal');
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
+
+  // Face clarity check state
+  const [checkingFace, setCheckingFace] = useState(false);
+  const [faceCheck, setFaceCheck] = useState<FaceCheckResult | null>(null);
+
+  // Avatar view mode: circular (sample style) vs full square
+  const [isCircular, setIsCircular] = useState(true);
 
   const [currentGen, setCurrentGen] = useState<Generation | null>(null);
   const [generations, setGenerations] = useState<Generation[]>([]);
@@ -64,7 +117,7 @@ export default function DashboardPage() {
     }
   }, []);
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
@@ -75,14 +128,35 @@ export default function DashboardPage() {
       setError('Image must be under 10 MB.');
       return;
     }
+
     setSelectedFile(file);
     setPreviewUrl(URL.createObjectURL(file));
     setError('');
     setCurrentGen(null);
+    setFaceCheck(null);
+
+    // Run instant face clarity check
+    setCheckingFace(true);
+    try {
+      const checkRes = await checkFaceQuality(file);
+      setFaceCheck(checkRes);
+      if (!checkRes.is_valid) {
+        setError(checkRes.message);
+      }
+    } catch {
+      // Backend validation will catch it if offline
+    } finally {
+      setCheckingFace(false);
+    }
   };
 
   const handleGenerate = async () => {
     if (!selectedFile) return;
+    if (faceCheck && !faceCheck.is_valid) {
+      setError(faceCheck.message);
+      return;
+    }
+
     setGenerating(true);
     setError('');
     setCurrentGen(null);
@@ -107,7 +181,7 @@ export default function DashboardPage() {
         } catch {
           /* keep polling */
         }
-      }, 3000);
+      }, 2000);
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to start generation.');
       setGenerating(false);
@@ -180,7 +254,7 @@ export default function DashboardPage() {
               )}
 
               <div className="flex flex-col gap-2">
-                <span className="text-sm font-medium">Photo</span>
+                <span className="text-sm font-medium">Portrait Photo</span>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -189,7 +263,7 @@ export default function DashboardPage() {
                   className="hidden"
                 />
                 <div
-                  className={`relative flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-6 transition-all cursor-pointer overflow-hidden
+                  className={`relative flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-5 transition-all cursor-pointer overflow-hidden
                     ${previewUrl ? 'border-primary/50 hover:border-primary' : 'border-muted-foreground/25 hover:border-muted-foreground/50 hover:bg-muted/50'}`}
                   onClick={() => fileInputRef.current?.click()}
                   onKeyDown={(e) => e.key === 'Enter' && fileInputRef.current?.click()}
@@ -197,47 +271,107 @@ export default function DashboardPage() {
                   role="button"
                 >
                   {previewUrl ? (
-                    <div className="group w-full relative aspect-[3/4] rounded-md overflow-hidden bg-muted">
+                    <div className="group w-full relative aspect-square max-w-[260px] mx-auto rounded-lg overflow-hidden bg-muted shadow-inner">
                        <img src={previewUrl} alt="Preview" className="object-cover w-full h-full" />
                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                         <span className="text-white text-sm font-medium flex items-center gap-2"><Upload className="size-4"/> Change photo</span>
+                         <span className="text-white text-xs font-semibold flex items-center gap-1.5 bg-black/60 px-3 py-1.5 rounded-full backdrop-blur-sm">
+                           <Upload className="size-3.5"/> Change photo
+                         </span>
                        </div>
                     </div>
                   ) : (
-                    <div className="text-center">
-                      <Upload className="mx-auto size-10 text-muted-foreground/50 mb-4" />
-                      <p className="text-sm font-medium mb-1">Click to upload photo</p>
-                      <p className="text-xs text-muted-foreground">JPG, PNG, WebP (max 10MB)</p>
+                    <div className="text-center py-4">
+                      <div className="size-12 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto mb-3">
+                        <Upload className="size-6" />
+                      </div>
+                      <p className="text-sm font-semibold mb-1">Click to upload portrait</p>
+                      <p className="text-xs text-muted-foreground">JPG, PNG, or WebP (max 10MB)</p>
                     </div>
                   )}
                 </div>
+
+                {/* Instant Face Clarity & Quality Indicator */}
+                {checkingFace && (
+                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-muted text-xs text-muted-foreground animate-pulse">
+                    <Loader2 className="size-3.5 animate-spin text-primary" />
+                    <span>Analyzing face clarity, sharpness & lighting...</span>
+                  </div>
+                )}
+                {!checkingFace && faceCheck && (
+                  <div
+                    className={`flex items-start gap-2 p-2.5 rounded-lg text-xs font-medium border ${
+                      faceCheck.is_valid
+                        ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-700 dark:text-emerald-400'
+                        : 'bg-destructive/10 border-destructive/25 text-destructive'
+                    }`}
+                  >
+                    {faceCheck.is_valid ? (
+                      <>
+                        <ShieldCheck className="size-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <span className="font-semibold block">Face verified</span>
+                          <span className="opacity-90">{faceCheck.message}</span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <AlertCircle className="size-4 shrink-0 mt-0.5" />
+                        <div>
+                          <span className="font-semibold block">Photo quality notice</span>
+                          <span className="opacity-90">{faceCheck.message}</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
 
+              {/* Background & Studio Lighting Selection */}
               <div className="flex flex-col gap-2">
-                <span className="text-sm font-medium">Style</span>
-                <div className="grid gap-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Studio Background</span>
+                  <span className="text-xs text-muted-foreground">Select backdrop</span>
+                </div>
+                <div className="grid gap-2.5">
                   {STYLES.map((s) => (
                     <label
                       key={s.id}
-                      className={`flex items-start p-3 border rounded-lg cursor-pointer transition-all ${
+                      className={`flex items-center gap-3 p-3 border rounded-xl cursor-pointer transition-all ${
                         selectedStyle === s.id
-                          ? 'border-primary bg-primary/5 ring-1 ring-primary'
-                          : 'border-border hover:bg-muted/50 hover:border-muted-foreground/50'
+                          ? 'border-primary bg-primary/5 ring-1 ring-primary shadow-sm'
+                          : 'border-border hover:bg-muted/40 hover:border-muted-foreground/40'
                       }`}
                     >
-                      <div className="flex items-center h-5">
-                        <input
-                          type="radio"
-                          name="style"
-                          value={s.id}
-                          checked={selectedStyle === s.id}
-                          onChange={() => setSelectedStyle(s.id)}
-                          className="size-4 text-primary focus:ring-primary border-gray-300"
-                        />
+                      <input
+                        type="radio"
+                        name="style"
+                        value={s.id}
+                        checked={selectedStyle === s.id}
+                        onChange={() => setSelectedStyle(s.id)}
+                        className="sr-only"
+                      />
+                      {/* Gradient Backdrop Swatch Preview */}
+                      <div
+                        className={`size-10 rounded-lg bg-gradient-to-b ${s.gradient} border ${s.borderColor} shadow-inner shrink-0 flex items-center justify-center`}
+                      >
+                        {selectedStyle === s.id && (
+                          <CheckCircle2 className="size-4 text-primary fill-background" />
+                        )}
                       </div>
-                      <div className="ml-3 text-sm">
-                        <span className="font-medium text-foreground block">{s.label}</span>
-                        <span className="text-muted-foreground">{s.desc}</span>
+                      <div className="flex-1 min-w-0 text-left">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-sm text-foreground truncate block">
+                            {s.label}
+                          </span>
+                          {'tag' in s && (
+                            <Badge variant="outline" className="text-[10px] py-0 px-1.5 border-primary/40 text-primary">
+                              {s.tag}
+                            </Badge>
+                          )}
+                        </div>
+                        <span className="text-xs text-muted-foreground line-clamp-1">
+                          {s.desc}
+                        </span>
                       </div>
                     </label>
                   ))}
@@ -246,14 +380,20 @@ export default function DashboardPage() {
 
               <Button
                 onClick={handleGenerate}
-                disabled={!selectedFile || generating}
-                className="w-full"
+                disabled={!selectedFile || generating || (faceCheck !== null && !faceCheck.is_valid)}
+                className="w-full shadow-md font-semibold"
                 size="lg"
               >
                 {generating ? (
-                  <><Loader2 className="mr-2 size-5 animate-spin" /> Generating...</>
+                  <>
+                    <Loader2 className="mr-2 size-5 animate-spin" />
+                    Generating Studio Headshot...
+                  </>
                 ) : (
-                  'Generate Headshot'
+                  <>
+                    <Sparkles className="mr-2 size-5" />
+                    Generate Professional Headshot
+                  </>
                 )}
               </Button>
             </CardContent>
@@ -265,21 +405,54 @@ export default function DashboardPage() {
           
           {currentGen && (
             <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xl font-semibold tracking-tight">Current Result</h3>
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <span className="text-sm text-muted-foreground capitalize font-medium">{currentGen.style}</span>
+                  <h3 className="text-xl font-bold tracking-tight">Current Result</h3>
                   <Badge variant={badgeVariant(currentGen.status) as any} className="capitalize">
                     {currentGen.status}
                   </Badge>
                 </div>
+
+                {/* View Mode Switcher: Circular Avatar vs Square Photo */}
+                {currentGen.status === 'completed' && currentGen.generated_image_url && (
+                  <div className="flex items-center gap-1 bg-muted p-1 rounded-lg border text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setIsCircular(true)}
+                      className={`flex items-center gap-1.5 px-3 py-1 rounded-md font-medium transition-all ${
+                        isCircular
+                          ? 'bg-background text-foreground shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <Circle className="size-3.5" />
+                      <span>Circular Avatar (Sample)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsCircular(false)}
+                      className={`flex items-center gap-1.5 px-3 py-1 rounded-md font-medium transition-all ${
+                        !isCircular
+                          ? 'bg-background text-foreground shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <Square className="size-3.5" />
+                      <span>Square Photo</span>
+                    </button>
+                  </div>
+                )}
               </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Original Card */}
                 <Card className="overflow-hidden">
-                  <CardHeader className="py-3 px-4 border-b bg-muted/30">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">Original</CardTitle>
+                  <CardHeader className="py-2.5 px-4 border-b bg-muted/40">
+                    <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Original Upload
+                    </CardTitle>
                   </CardHeader>
-                  <CardContent className="p-0 aspect-[3/4] bg-muted flex items-center justify-center">
+                  <CardContent className="p-0 aspect-square bg-muted flex items-center justify-center overflow-hidden">
                     {currentGen.original_image_url ? (
                       <img src={currentGen.original_image_url} alt="Original" className="w-full h-full object-cover" />
                     ) : (
@@ -287,34 +460,57 @@ export default function DashboardPage() {
                     )}
                   </CardContent>
                 </Card>
+
+                {/* Generated Result Card */}
                 <Card className="overflow-hidden relative group">
-                  <CardHeader className="py-3 px-4 border-b bg-muted/30">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">Generated</CardTitle>
+                  <CardHeader className="py-2.5 px-4 border-b bg-muted/40 flex flex-row items-center justify-between">
+                    <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                      <Sparkles className="size-3.5 text-primary" /> Studio Headshot
+                    </CardTitle>
+                    <span className="text-xs text-muted-foreground capitalize font-medium">
+                      {currentGen.style.replace('_', ' ')}
+                    </span>
                   </CardHeader>
-                  <CardContent className="p-0 aspect-[3/4] bg-muted flex flex-col items-center justify-center text-center">
+
+                  <CardContent
+                    className={`p-0 aspect-square flex flex-col items-center justify-center text-center overflow-hidden transition-all ${
+                      isCircular && currentGen.status === 'completed'
+                        ? 'bg-[#18191b] p-6'
+                        : 'bg-muted'
+                    }`}
+                  >
                     {currentGen.status === 'completed' && currentGen.generated_image_url ? (
-                      <>
-                        <img src={currentGen.generated_image_url} alt="Generated" className="w-full h-full object-cover" />
+                      <div className="relative w-full h-full flex items-center justify-center">
+                        <img
+                          src={currentGen.generated_image_url}
+                          alt="Generated Studio Portrait"
+                          className={`transition-all duration-300 object-cover ${
+                            isCircular
+                              ? 'size-64 rounded-full shadow-2xl ring-4 ring-white/10'
+                              : 'w-full h-full'
+                          }`}
+                        />
                         <div className="absolute bottom-4 left-0 right-0 flex justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button asChild size="sm" className="shadow-lg rounded-full px-6">
-                            <a href={currentGen.generated_image_url} download target="_blank" rel="noopener noreferrer">
-                              <Download className="mr-2 size-4" /> Download
+                          <Button asChild size="sm" className="shadow-xl rounded-full px-5 font-semibold bg-primary text-primary-foreground hover:bg-primary/90">
+                            <a href={currentGen.generated_image_url} download={`headshot_${currentGen.id}.jpg`} target="_blank" rel="noopener noreferrer">
+                              <Download className="mr-2 size-4" /> Download Headshot
                             </a>
                           </Button>
                         </div>
-                      </>
+                      </div>
                     ) : currentGen.status === 'failed' ? (
-                      <div className="px-6">
+                      <div className="px-6 py-8">
                         <AlertCircle className="size-10 text-destructive mb-3 mx-auto" />
-                        <p className="text-sm font-medium text-destructive">{currentGen.error_message || 'Generation failed'}</p>
+                        <p className="text-sm font-semibold text-destructive mb-1">Generation Failed</p>
+                        <p className="text-xs text-muted-foreground">{currentGen.error_message || 'Please try another portrait'}</p>
                       </div>
                     ) : (
-                      <div className="px-6 flex flex-col items-center">
+                      <div className="px-6 py-8 flex flex-col items-center">
                         <Loader2 className="size-10 animate-spin text-primary mb-4" />
-                        <p className="text-sm font-medium mb-1">
-                          {currentGen.status === 'pending' ? 'In Queue' : 'AI Processing'}
+                        <p className="text-sm font-semibold mb-1">
+                          {currentGen.status === 'pending' ? 'Analyzing Portrait...' : 'Rendering Studio Headshot...'}
                         </p>
-                        <p className="text-xs text-muted-foreground">This usually takes 30-60 seconds.</p>
+                        <p className="text-xs text-muted-foreground">Applying studio backdrop & portrait lighting</p>
                       </div>
                     )}
                   </CardContent>

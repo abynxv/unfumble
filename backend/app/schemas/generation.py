@@ -21,27 +21,38 @@ from pydantic import BaseModel, Field
 
 class StyleEnum(str, Enum):
     """
-    Available styles for profile picture generation.
-    Each style maps to a different prompt sent to the AI model.
+    Available styles and backgrounds for profile picture generation.
     """
+    STUDIO_MINIMAL = "studio_minimal"
+    STUDIO_GREY = "studio_grey"
+    OFFICE_BLUR = "office_blur"
+    WARM_LOUNGE = "warm_lounge"
+    OUTDOOR_BOKEH = "outdoor_bokeh"
+
+    # Legacy styles for backwards compatibility
     CORPORATE = "corporate"
     STARTUP = "startup"
     DEVELOPER = "developer"
     FORMAL = "formal"
 
 
+class FaceCheckResponse(BaseModel):
+    """Result of pre-flight face clarity and quality analysis."""
+    is_valid: bool
+    message: str
+    face_count: int = 0
+    blur_score: float = 0.0
+    brightness: float = 0.0
+
+
 class GenerationCreate(BaseModel):
     """
     Schema for creating a new generation.
-
-    NOTE: The actual image file is sent as a multipart form upload,
-    not in the JSON body. This schema only validates the 'style' field
-    which is sent as a form field alongside the image.
     """
     style: StyleEnum = Field(
         ...,
-        description="The style for the generated profile picture.",
-        examples=["corporate"],
+        description="The background style for the generated profile picture.",
+        examples=["studio_minimal"],
     )
 
 
