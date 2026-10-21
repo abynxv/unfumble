@@ -72,7 +72,28 @@ export interface AdminStats {
   processing_generations: number;
 }
 
+export interface FaceCheckResult {
+  is_valid: boolean;
+  message: string;
+  face_count: number;
+  blur_score: number;
+  brightness: number;
+}
+
 // ─── API Functions ──────────────────────────────────────────────
+
+/**
+ * Check face presence, clarity, sharpness, and lighting before generating.
+ */
+export async function checkFaceQuality(image: File): Promise<FaceCheckResult> {
+  const formData = new FormData();
+  formData.append('image', image);
+
+  const response = await api.post<FaceCheckResult>('/generations/check-face', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return response.data;
+}
 
 /**
  * Create a new generation by uploading an image and selecting a style.

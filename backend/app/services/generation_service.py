@@ -30,7 +30,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.models.generation import Generation, GenerationStatus
+from app.services.face_analyzer import FaceAnalyzer, get_face_analyzer
 from app.services.huggingface_service import HuggingFaceService, get_huggingface_service
+from app.services.portrait_studio import PortraitStudio, get_portrait_studio
 from app.services.storage_service import StorageService, get_storage_service
 
 logger = logging.getLogger(__name__)
@@ -50,16 +52,20 @@ class GenerationService:
     Orchestrates the profile picture generation workflow.
 
     This is the main business logic layer — it coordinates between
-    storage, AI inference, and the database.
+    face analysis, portrait studio compositing, storage, and database.
     """
 
     def __init__(
         self,
         storage: StorageService | None = None,
         huggingface: HuggingFaceService | None = None,
+        portrait_studio: PortraitStudio | None = None,
+        face_analyzer: FaceAnalyzer | None = None,
     ) -> None:
         self._storage = storage or get_storage_service()
         self._hf = huggingface or get_huggingface_service()
+        self._portrait_studio = portrait_studio or get_portrait_studio()
+        self._face_analyzer = face_analyzer or get_face_analyzer()
         self._settings = get_settings()
 
     def validate_image(self, file_data: bytes, filename: str, content_type: str | None) -> None:
@@ -93,9 +99,6 @@ class GenerationService:
             )
 
         # 3. Verify it's actually a valid image using Pillow
-        # WHY PILLOW: A file could have a .jpg extension but contain malicious
-        # content. Pillow actually parses the image header and pixel data,
-        # so it will reject non-image files.
         try:
             img = Image.open(BytesIO(file_data))
             img.verify()  # Verifies the image data without fully decoding it
@@ -103,6 +106,15 @@ class GenerationService:
             raise ImageValidationError(
                 "The uploaded file is not a valid image or is corrupted."
             )
+
+        # 4. Face clarity and quality check
+        analysis = self._face_analyzer.analyze_image(file_data)
+        if not analysis.is_valid:
+            raise ImageValidationError(analysis.message)
+
+    def check_face(self, file_data: bytes):
+        """Analyze face quality for pre-flight frontend checks."""
+        return self._face_analyzer.analyze_image(file_data)
 
     async def create_generation(
         self,
@@ -115,16 +127,8 @@ class GenerationService:
     ) -> Generation:
         """
         Create a new generation record and upload the original image.
-
-        This method handles the synchronous part of generation:
-        - Validate the image
-        - Upload it to storage
-        - Create the database record
-
-        The actual AI inference happens separately (in process_generation)
-        so it can run as a background task without blocking the HTTP response.
         """
-        # Validate the uploaded image
+        # Validate the uploaded image and verify face clarity
         self.validate_image(file_data, filename, content_type)
 
         # Upload original image to storage
@@ -161,19 +165,7 @@ class GenerationService:
         style: str,
     ) -> None:
         """
-        Run AI inference and update the generation record.
-
-        WHY SEPARATE FROM create_generation:
-        AI inference can take 30-60+ seconds. If we did it in the same request,
-        the user would see a loading spinner for a full minute. Instead:
-        1. create_generation() returns immediately with status=PENDING
-        2. This method runs as a FastAPI BackgroundTask
-        3. The frontend polls for status updates
-
-        WHY BackgroundTasks (NOT Celery):
-        For a learning project, FastAPI's built-in BackgroundTasks is sufficient.
-        It runs the task in the same process after the response is sent.
-        Celery would be overkill here — it requires Redis/RabbitMQ infrastructure.
+        Transform portrait into professional studio headshot and update generation record.
         """
         # Fetch the generation record
         result = await db.execute(
@@ -193,24 +185,32 @@ class GenerationService:
         await db.commit()
 
         try:
-            # Run AI inference via HuggingFace
-            generated_bytes = await self._hf.generate_profile_image(
+            # 1. Analyze face to get framing and bounding coordinates
+            analysis = self._face_analyzer.analyze_image(original_image_bytes)
+
+            # 2. Generate studio-grade headshot with chosen background and lighting
+            generated_bytes = self._portrait_studio.generate_portrait(
                 image_bytes=original_image_bytes,
                 style=style,
+                face_box=analysis.face_box,
             )
 
-            # Upload the generated image to storage
+            # 3. Upload the generated studio image to storage
             generated_path = self._storage.upload_file(
                 file_data=generated_bytes,
                 folder="generated",
                 user_id=user_id,
-                original_filename=f"generated_{generation_id}.png",
+                original_filename=f"generated_{generation_id}.jpg",
             )
             generated_url = self._storage.get_public_url(generated_path)
 
             # Update the generation record with the result
             generation.generated_image_url = generated_url
             generation.status = GenerationStatus.COMPLETED
+            generation.completed_at = datetime.now(timezone.utc)
+            await db.commit()
+
+            logger.info(f"Generation {generation_id} completed successfully")
             generation.completed_at = datetime.now(timezone.utc)
             await db.commit()
 

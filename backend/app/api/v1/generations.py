@@ -41,6 +41,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.security import AuthenticatedUser, get_current_user
 from app.schemas.generation import (
+    FaceCheckResponse,
     GenerationListResponse,
     GenerationResponse,
     StyleEnum,
@@ -55,6 +56,29 @@ from app.core.database import SessionLocal
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/generations", tags=["Generations"])
+
+
+@router.post(
+    "/check-face",
+    response_model=FaceCheckResponse,
+    summary="Check face clarity and quality",
+    description="Validate if an uploaded photo contains a clear, sharp, well-lit human face.",
+)
+async def check_face_quality(
+    image: UploadFile = File(..., description="The portrait image to check"),
+    user: AuthenticatedUser = Depends(get_current_user),
+    service: GenerationService = Depends(get_generation_service),
+):
+    """Analyze face clarity, sharpness, and framing before generation."""
+    file_data = await image.read()
+    analysis = service.check_face(file_data)
+    return FaceCheckResponse(
+        is_valid=analysis.is_valid,
+        message=analysis.message,
+        face_count=analysis.face_count,
+        blur_score=round(analysis.blur_score, 1),
+        brightness=round(analysis.brightness, 1),
+    )
 
 
 async def _run_background_generation(
