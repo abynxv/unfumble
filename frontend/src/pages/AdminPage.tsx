@@ -14,12 +14,24 @@ import {
   type AdminStats,
   type Generation,
 } from '../services/api';
-
-const IconTrash = () => (
-  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
-  </svg>
-);
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  AlertCircle,
+  ArrowLeft,
+  Activity,
+  Loader2,
+  Lock,
+  Trash2,
+  Users,
+  ImageIcon,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  Cpu,
+} from 'lucide-react';
 
 export default function AdminPage() {
   const { user, loading: authLoading, signOut } = useAuth();
@@ -85,68 +97,95 @@ export default function AdminPage() {
     navigate('/login', { replace: true });
   };
 
-  const badgeClass = (s: string) =>
-    s === 'completed'  ? 'badge badge-completed'  :
-    s === 'processing' ? 'badge badge-processing' :
-    s === 'failed'     ? 'badge badge-failed'     :
-    'badge badge-pending';
+  const statusBadgeVariant = (s: string) => {
+    switch (s) {
+      case 'completed': return 'default';
+      case 'processing': return 'secondary';
+      case 'failed': return 'destructive';
+      default: return 'outline';
+    }
+  };
 
-  if (authLoading || loading) return <div className="loading-screen"><div className="spinner" /></div>;
+  if (authLoading || loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="size-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
-    <div className="admin-page">
+    <div className="min-h-screen bg-muted/20 flex flex-col font-sans">
 
       {/* ── Header ─────────────────────────────────────────────── */}
-      <header className="admin-header">
-        <div className="header-brand">
-          <div className="brand-mark" />
-          Unfumble
-          <span className="badge badge-admin">Admin</span>
-        </div>
-        <div className="header-actions">
-          <button onClick={() => navigate('/dashboard')} className="btn-ghost">Dashboard</button>
-          <button onClick={handleLogout} className="btn-ghost" id="logout-button">Sign out</button>
+      <header className="sticky top-0 z-10 bg-background border-b border-border shadow-sm">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6 lg:px-8">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span className="flex items-center justify-center size-8 bg-primary text-primary-foreground rounded-md text-sm font-bold">U</span>
+              <span className="text-xl font-bold tracking-tighter">unfumble</span>
+            </div>
+            <Badge variant="outline" className="text-[10px] uppercase tracking-wider font-semibold border-primary/40 text-primary">
+              Admin
+            </Badge>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')}>
+              <ArrowLeft className="mr-1.5 size-3.5" />
+              Dashboard
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleLogout}>Sign out</Button>
+          </div>
         </div>
       </header>
 
       {/* ── Access Denied ──────────────────────────────────────── */}
       {accessDenied && (
-        <div className="access-denied">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.5">
-            <rect x="3" y="11" width="18" height="11" rx="2" />
-            <path d="M7 11V7a5 5 0 0110 0v4" />
-          </svg>
-          <p className="access-denied-title">Access denied</p>
-          <p className="access-denied-sub">You don't have admin privileges.</p>
-          <button onClick={() => navigate('/dashboard')} className="btn-secondary" style={{ width: 'auto', marginTop: 8 }}>
+        <div className="flex-1 flex flex-col items-center justify-center gap-4 p-12 text-center">
+          <div className="size-16 rounded-full bg-muted flex items-center justify-center">
+            <Lock className="size-7 text-muted-foreground" />
+          </div>
+          <h2 className="text-xl font-bold tracking-tight">Access denied</h2>
+          <p className="text-sm text-muted-foreground">You don't have admin privileges.</p>
+          <Button variant="outline" onClick={() => navigate('/dashboard')} className="mt-2">
             Go to Dashboard
-          </button>
+          </Button>
         </div>
       )}
 
       {!accessDenied && (
-        <main className="admin-main">
+        <main className="flex-1 mx-auto max-w-6xl w-full px-4 sm:px-6 lg:px-8 py-8 flex flex-col gap-8">
 
           {/* Error */}
-          {error && <div className="alert alert-error">{error}</div>}
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="size-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
 
           {/* ── Stats ────────────────────────────────────────── */}
           {stats && (
-            <section>
-              <p className="panel-section-title" style={{ marginBottom: 12 }}>Overview</p>
-              <div className="stats-row">
+            <section className="flex flex-col gap-3">
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Overview</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                 {([
-                  { label: 'Users',      value: stats.total_users },
-                  { label: 'Total',      value: stats.total_generations },
-                  { label: 'Completed',  value: stats.completed_generations },
-                  { label: 'Failed',     value: stats.failed_generations },
-                  { label: 'Pending',    value: stats.pending_generations },
-                  { label: 'Processing', value: stats.processing_generations },
-                ] as { label: string; value: number }[]).map(s => (
-                  <div key={s.label} className="stat-box">
-                    <span className="stat-value">{s.value}</span>
-                    <span className="stat-label">{s.label}</span>
-                  </div>
+                  { label: 'Users',      value: stats.total_users,              icon: <Users className="size-4" />,        color: 'text-primary' },
+                  { label: 'Total',      value: stats.total_generations,        icon: <ImageIcon className="size-4" />,    color: 'text-foreground' },
+                  { label: 'Completed',  value: stats.completed_generations,    icon: <CheckCircle2 className="size-4" />, color: 'text-emerald-600' },
+                  { label: 'Failed',     value: stats.failed_generations,       icon: <XCircle className="size-4" />,      color: 'text-destructive' },
+                  { label: 'Pending',    value: stats.pending_generations,      icon: <Clock className="size-4" />,        color: 'text-amber-500' },
+                  { label: 'Processing', value: stats.processing_generations,   icon: <Loader2 className="size-4" />,      color: 'text-blue-500' },
+                ] as { label: string; value: number; icon: React.ReactNode; color: string }[]).map(s => (
+                  <Card key={s.label} className="bg-card">
+                    <CardContent className="pt-4 pb-3 px-4 flex flex-col gap-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{s.label}</span>
+                        <span className={s.color}>{s.icon}</span>
+                      </div>
+                      <span className="text-2xl font-extrabold tracking-tight text-foreground">{s.value}</span>
+                    </CardContent>
+                  </Card>
                 ))}
               </div>
             </section>
@@ -154,35 +193,37 @@ export default function AdminPage() {
 
           {/* ── Health ───────────────────────────────────────── */}
           {hfHealth && (
-            <section>
-              <p className="panel-section-title" style={{ marginBottom: 12 }}>System health</p>
-              <div className="health-row">
-                <div className="health-chip">
-                  <span className={`health-dot ${hfHealth.huggingface_api === 'healthy' ? 'ok' : 'err'}`} />
+            <section className="flex flex-col gap-3">
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">System Health</h3>
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium">
+                  <span className={`size-2.5 rounded-full ${hfHealth.huggingface_api === 'healthy' ? 'bg-emerald-500' : 'bg-destructive'} animate-pulse`} />
+                  <Activity className="size-3.5 text-muted-foreground" />
                   <span>HuggingFace API</span>
-                  <span style={{ color: 'var(--text-tertiary)', fontSize: 11 }}>{hfHealth.huggingface_api}</span>
+                  <Badge variant={hfHealth.huggingface_api === 'healthy' ? 'default' : 'destructive'} className="text-[10px] px-1.5 py-0">
+                    {hfHealth.huggingface_api}
+                  </Badge>
                 </div>
-                <div className="health-chip">
-                  <span style={{ fontSize: 11, color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)' }}>
-                    {hfHealth.model_id}
-                  </span>
+                <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm">
+                  <Cpu className="size-3.5 text-muted-foreground" />
+                  <code className="text-xs text-muted-foreground font-mono">{hfHealth.model_id}</code>
                 </div>
               </div>
             </section>
           )}
 
           {/* ── Generations Table ─────────────────────────────── */}
-          <section>
-            <div className="admin-card">
-              <div className="admin-card-header">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span className="section-title">Generations</span>
-                  <span className="section-sub">({total})</span>
+          <section className="flex flex-col gap-3">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between border-b py-3 px-5">
+                <div className="flex items-center gap-2.5">
+                  <CardTitle className="text-base font-semibold">Generations</CardTitle>
+                  <span className="text-sm text-muted-foreground font-medium">({total})</span>
                 </div>
                 <select
                   value={statusFilter}
                   onChange={e => handleFilter(e.target.value)}
-                  className="filter-select"
+                  className="text-sm font-medium text-muted-foreground bg-muted border border-border rounded-lg px-3 py-1.5 outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 cursor-pointer transition-all"
                 >
                   <option value="">All statuses</option>
                   <option value="pending">Pending</option>
@@ -190,54 +231,71 @@ export default function AdminPage() {
                   <option value="completed">Completed</option>
                   <option value="failed">Failed</option>
                 </select>
-              </div>
+              </CardHeader>
 
-              {generations.length === 0 ? (
-                <div className="history-empty" style={{ padding: '48px 0' }}>
-                  <span>No generations found</span>
-                </div>
-              ) : (
-                <div style={{ overflowX: 'auto' }}>
-                  <table className="admin-table">
-                    <thead>
-                      <tr>
-                        <th>ID</th>
-                        <th>User</th>
-                        <th>Style</th>
-                        <th>Status</th>
-                        <th>Created</th>
-                        <th></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {generations.map(gen => (
-                        <tr key={gen.id}>
-                          <td className="td-muted">#{gen.id}</td>
-                          <td className="td-muted" title={gen.user_id}>{gen.user_id.slice(0, 8)}…</td>
-                          <td><span className="style-pill">{gen.style}</span></td>
-                          <td><span className={badgeClass(gen.status)}>{gen.status}</span></td>
-                          <td className="td-muted">
-                            {new Date(gen.created_at).toLocaleDateString('en-US', {
-                              month: 'short', day: 'numeric',
-                              hour: '2-digit', minute: '2-digit',
-                            })}
-                          </td>
-                          <td>
-                            <button
-                              onClick={() => handleDelete(gen.id)}
-                              className="btn-icon danger"
-                              title="Delete"
-                            >
-                              <IconTrash />
-                            </button>
-                          </td>
+              <CardContent className="p-0">
+                {generations.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
+                    <div className="size-12 rounded-full bg-muted flex items-center justify-center">
+                      <ImageIcon className="size-5 text-muted-foreground" />
+                    </div>
+                    <p className="text-sm text-muted-foreground font-medium">No generations found</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b bg-muted/40">
+                          <th className="text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground px-5 py-3">ID</th>
+                          <th className="text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground px-5 py-3">User</th>
+                          <th className="text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground px-5 py-3">Style</th>
+                          <th className="text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground px-5 py-3">Status</th>
+                          <th className="text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground px-5 py-3">Created</th>
+                          <th className="w-12 px-3 py-3"></th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {generations.map(gen => (
+                          <tr key={gen.id} className="group transition-colors hover:bg-muted/30">
+                            <td className="px-5 py-3 font-mono text-xs text-muted-foreground">#{gen.id}</td>
+                            <td className="px-5 py-3 font-mono text-xs text-muted-foreground" title={gen.user_id}>
+                              {gen.user_id.slice(0, 8)}…
+                            </td>
+                            <td className="px-5 py-3">
+                              <Badge variant="secondary" className="capitalize text-xs font-medium">
+                                {gen.style.replace(/_/g, ' ')}
+                              </Badge>
+                            </td>
+                            <td className="px-5 py-3">
+                              <Badge variant={statusBadgeVariant(gen.status) as any} className="capitalize text-xs">
+                                {gen.status}
+                              </Badge>
+                            </td>
+                            <td className="px-5 py-3 text-xs text-muted-foreground whitespace-nowrap">
+                              {new Date(gen.created_at).toLocaleDateString('en-US', {
+                                month: 'short', day: 'numeric',
+                                hour: '2-digit', minute: '2-digit',
+                              })}
+                            </td>
+                            <td className="px-3 py-3">
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                onClick={() => handleDelete(gen.id)}
+                                title="Delete"
+                                className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                              >
+                                <Trash2 className="size-3.5" />
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </section>
 
         </main>

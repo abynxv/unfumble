@@ -167,3 +167,4 @@ echo ""
 
 # Wait for any child to exit (if one crashes, we stay alive for the other)
 wait
+
