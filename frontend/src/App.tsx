@@ -6,6 +6,7 @@
  * /login      → LoginPage (public)
  * /dashboard  → DashboardPage (protected — requires authentication)
  * /admin      → AdminPage (protected — requires admin privileges)
+ * *           → NotFoundPage (catch-all 404)
  *
  * ProtectedRoute wraps routes that need authentication.
  * It checks the Supabase session before rendering the child component.
@@ -17,6 +18,7 @@ import AdminPage from './pages/AdminPage';
 import DashboardPage from './pages/DashboardPage';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
+import NotFoundPage from './pages/NotFoundPage';
 
 function App() {
   return (
@@ -31,9 +33,13 @@ function App() {
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/admin" element={<AdminPage />} />
         </Route>
+
+        {/* 404 catch-all */}
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>
   );
 }
 
 export default App;
+
