@@ -8,38 +8,50 @@
  * /admin      → AdminPage (protected — requires admin privileges)
  * *           → NotFoundPage (catch-all 404)
  *
+ * Lazy-loaded routes ensure optimal initial bundle size and fast load times.
  * ProtectedRoute wraps routes that need authentication.
- * It checks the Supabase session before rendering the child component.
  */
 
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { Loader2 } from 'lucide-react';
 import ProtectedRoute from './components/ProtectedRoute';
-import AdminPage from './pages/AdminPage';
-import DashboardPage from './pages/DashboardPage';
-import LandingPage from './pages/LandingPage';
-import LoginPage from './pages/LoginPage';
-import NotFoundPage from './pages/NotFoundPage';
+
+const LandingPage = lazy(() => import('./pages/LandingPage'));
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const AdminPage = lazy(() => import('./pages/AdminPage'));
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
+
+function PageLoader() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <Loader2 className="size-8 animate-spin text-primary" />
+    </div>
+  );
+}
 
 function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        {/* Public routes */}
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/login" element={<LoginPage />} />
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<LoginPage />} />
 
-        {/* Protected routes — require authentication */}
-        <Route element={<ProtectedRoute />}>
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/admin" element={<AdminPage />} />
-        </Route>
+          {/* Protected routes — require authentication */}
+          <Route element={<ProtectedRoute />}>
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/admin" element={<AdminPage />} />
+          </Route>
 
-        {/* 404 catch-all */}
-        <Route path="*" element={<NotFoundPage />} />
-      </Routes>
+          {/* 404 catch-all */}
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }
 
 export default App;
-

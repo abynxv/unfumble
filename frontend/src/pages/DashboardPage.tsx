@@ -73,6 +73,7 @@ export default function DashboardPage() {
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const [selectedStyle, setSelectedStyle] = useState('studio_minimal');
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
@@ -117,9 +118,7 @@ export default function DashboardPage() {
     }
   }, []);
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const processFile = async (file: File) => {
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
       setError('Please select a JPG, PNG, or WebP image.');
       return;
@@ -148,6 +147,31 @@ export default function DashboardPage() {
     } finally {
       setCheckingFace(false);
     }
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) await processFile(file);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) await processFile(file);
   };
 
   const handleGenerate = async () => {
@@ -264,13 +288,30 @@ export default function DashboardPage() {
                 />
                 <div
                   className={`relative flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-5 transition-all cursor-pointer overflow-hidden
-                    ${previewUrl ? 'border-primary/50 hover:border-primary' : 'border-muted-foreground/25 hover:border-muted-foreground/50 hover:bg-muted/50'}`}
+                    ${
+                      isDragging
+                        ? 'border-primary bg-primary/10 ring-2 ring-primary/20 scale-[1.01]'
+                        : previewUrl
+                        ? 'border-primary/50 hover:border-primary'
+                        : 'border-muted-foreground/25 hover:border-muted-foreground/50 hover:bg-muted/50'
+                    }`}
                   onClick={() => fileInputRef.current?.click()}
                   onKeyDown={(e) => e.key === 'Enter' && fileInputRef.current?.click()}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
                   tabIndex={0}
                   role="button"
                 >
-                  {previewUrl ? (
+                  {isDragging ? (
+                    <div className="text-center py-8">
+                      <div className="size-12 rounded-full bg-primary/20 text-primary flex items-center justify-center mx-auto mb-3 animate-bounce">
+                        <Upload className="size-6" />
+                      </div>
+                      <p className="text-sm font-semibold text-primary mb-1">Drop your portrait here</p>
+                      <p className="text-xs text-muted-foreground">Release to upload instantly</p>
+                    </div>
+                  ) : previewUrl ? (
                     <div className="group w-full relative aspect-square max-w-[260px] mx-auto rounded-lg overflow-hidden bg-muted shadow-inner">
                        <img src={previewUrl} alt="Preview" className="object-cover w-full h-full" />
                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
@@ -284,7 +325,7 @@ export default function DashboardPage() {
                       <div className="size-12 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto mb-3">
                         <Upload className="size-6" />
                       </div>
-                      <p className="text-sm font-semibold mb-1">Click to upload portrait</p>
+                      <p className="text-sm font-semibold mb-1">Click or drag & drop portrait</p>
                       <p className="text-xs text-muted-foreground">JPG, PNG, or WebP (max 10MB)</p>
                     </div>
                   )}
