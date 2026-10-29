@@ -70,6 +70,19 @@ export default function LoginPage() {
     if (e.key === 'Backspace' && !otp[i] && i > 0) otpRefs.current[i - 1]?.focus();
   };
 
+  const handlePaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    if (!pasted) return;
+    const next = ['', '', '', '', '', ''];
+    for (let idx = 0; idx < pasted.length; idx++) {
+      next[idx] = pasted[idx];
+    }
+    setOtp(next);
+    const focusIndex = Math.min(pasted.length, 5);
+    otpRefs.current[focusIndex]?.focus();
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -177,6 +190,7 @@ export default function LoginPage() {
                       value={digit}
                       onChange={(e) => handleOtpChange(i, e.target.value)}
                       onKeyDown={(e) => handleOtpKey(i, e)}
+                      onPaste={handlePaste}
                       disabled={submitting}
                       autoComplete="one-time-code"
                       className="size-12 text-center text-xl font-semibold sm:size-14"
