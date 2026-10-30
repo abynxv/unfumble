@@ -1,5 +1,6 @@
 import { useState, useEffect, memo } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowRight, Camera, CheckCircle2, Cpu, Download, Shield, Sparkles, Upload, Zap } from 'lucide-react';
@@ -163,6 +164,7 @@ const StatsBar = memo(() => {
 
 /* ── Main Landing Page ─────────────────────────────────────────── */
 export default function LandingPage() {
+  const { user } = useAuth();
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -183,10 +185,10 @@ export default function LandingPage() {
         }`}
       >
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6 lg:px-8">
-          <div className="flex items-center gap-2">
+          <Link to="/" className="flex items-center gap-2">
             <span className="flex items-center justify-center size-7 bg-primary text-primary-foreground rounded-md text-xs font-bold">U</span>
             <span className="text-lg font-bold tracking-tighter">unfumble</span>
-          </div>
+          </Link>
           <nav className="flex items-center gap-6">
             <a href="#features" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors hidden sm:block">
               Features
@@ -195,7 +197,9 @@ export default function LandingPage() {
               How it works
             </a>
             <Button asChild variant="default" size="sm" className="rounded-full px-5">
-              <Link to="/login">Get started</Link>
+              <Link to={user ? "/dashboard" : "/login"}>
+                {user ? 'Dashboard' : 'Get started'}
+              </Link>
             </Button>
           </nav>
         </div>
@@ -246,8 +250,8 @@ export default function LandingPage() {
 
               <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
                 <Button asChild size="lg" className="rounded-full px-8 h-12 text-base shadow-md shadow-primary/20 group w-full sm:w-auto">
-                  <Link to="/login">
-                    Create your headshot
+                  <Link to={user ? "/dashboard" : "/login"}>
+                    {user ? 'Go to Dashboard' : 'Create your headshot'}
                     <ArrowRight className="ml-2 size-4 transition-transform group-hover:translate-x-1" />
                   </Link>
                 </Button>
@@ -310,8 +314,8 @@ export default function LandingPage() {
                 No credit card. No commitment. Just results.
               </p>
               <Button asChild size="lg" className="rounded-full px-10 h-12 text-base shadow-md shadow-primary/20 group">
-                <Link to="/login">
-                  Create your headshot
+                <Link to={user ? "/dashboard" : "/login"}>
+                  {user ? 'Go to Dashboard' : 'Create your headshot'}
                   <ArrowRight className="ml-2 size-4 transition-transform group-hover:translate-x-1" />
                 </Link>
               </Button>
